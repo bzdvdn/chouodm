@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "chouodm"
+version = "0.0.1alpha1"
+description = "MongoDB odm based on motor+msgspec"
+authors = ["Bogdan <bzdv.dn@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+motor = "^3.1.1"
+msgspec = "^0.14.1"
+typing-extensions = "^4.5.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.2"
+pytest-asyncio = "^0.21.0"
+
+[build-system]
+requires = ["poetry-core"]
