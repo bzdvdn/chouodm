@@ -15,8 +15,10 @@ from re import Pattern
 from types import GeneratorType
 from typing import Any, Callable, Dict, Type, Union
 from uuid import UUID
-from bson import ObjectId, decode as bson_decode
+from bson import ObjectId, decode as bson_decode, DBRef
 from bson.raw_bson import RawBSONDocument
+
+from .types import Relation
 
 
 def decimal_encoder(dec_value: Decimal) -> Union[int, float]:
@@ -37,6 +39,15 @@ def decimal_encoder(dec_value: Decimal) -> Union[int, float]:
 
 def isoformat(o: Union[datetime.date, datetime.time]) -> str:
     return o.isoformat()
+
+
+def db_ref_converter(db_ref: DBRef) -> dict:
+    return {"id": db_ref.id, "collection": db_ref.collection}
+
+
+def decode_to_relation(db_ref_dict: dict, type: Any) -> Relation:
+    db_ref = DBRef(**db_ref_dict)
+    return Relation(db_ref, type.__args__[0])
 
 
 ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {
@@ -62,6 +73,8 @@ ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {
     UUID: str,
     ObjectId: str,
     RawBSONDocument: bson_decode,
+    DBRef: db_ref_converter,
+    Relation: lambda r: r.to_dict(),
 }
 
 

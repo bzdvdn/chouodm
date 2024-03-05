@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from bson.raw_bson import RawBSONDocument
 
 from .singleton import Singleton
+from .manager import ODMManager
 
 DEFAULT_ENV_NAME: str = "default"
 
@@ -116,4 +117,5 @@ def connect(
         socket_timeout_ms=socket_timeout_ms,
         ssl_cert_path=ssl_cert_path,
     )
+    ODMManager.use(connection)
     return connection
