@@ -183,8 +183,6 @@ class Document(Struct, kw_only=True, forbid_unknown_fields=True):  # type: ignor
                 "__encoder__",
                 "manager",
                 "data",
-                "Q",
-                "Qsync",
                 "pk",
                 "schema",
                 "_mongo_query_data",
@@ -282,3 +280,69 @@ class Document(Struct, kw_only=True, forbid_unknown_fields=True):  # type: ignor
         return self.Q().sync._io_loop.run_until_complete(
             self.save(updated_fields, session)
         )
+
+
+class DynamicCollectionDocument(Document):
+    base_collection_name_prefix: str = ""
+
+    @classmethod
+    def _init_subclass(cls, *args, **kwargs):
+        relation_infos = {}
+        for field, field_type in cls.__annotations__.items():
+            if field.startswith("_"):
+                continue
+            inspected = inspect.type_info(field_type)
+            insected_cls = getattr(inspected, "cls", None)
+            if insected_cls and issubclass(insected_cls, Document):
+                raise ValueError(
+                    f"{field} - cant be instance of Document without Relation"
+                )
+            relation_info = take_relation_info(inspected, field_type, field)
+            if relation_info is not None:
+                raise ValueError(
+                    f"{field} - DynamicCollectionDocument cant be using Relation"
+                )
+
+        indexes = getattr(cls.Config, "indexes", [])
+        if not all([isinstance(index, IndexModel) for index in indexes]):
+            raise ValueError("indexes must be list of IndexModel instances")
+        exclude_fields = getattr(cls.Config, "database_exclude_fields", tuple())  # type: ignore
+        collection_name = getattr(cls.Config, "collection_name", None) or None
+        setattr(cls, "__indexes__", indexes)
+        setattr(cls, "__database_exclude_fields__", exclude_fields)
+        setattr(cls, "__collection_name__", collection_name)
+        setattr(cls, "__relation_info__", relation_infos)
+        setattr(cls, "has_relations", False)
+
+    @classmethod
+    def Q(cls, collection_name: str) -> "QueryBuilder":
+        return cls.manager.querybuilder(collection_name)
+
+    @classmethod
+    def Qsync(cls, collection_name: str) -> "SyncQueryBuilder":
+        return cls.manager.sync_querybuilder(collection_name)
+
+    async def save(self, *args, **kwargs):
+        raise AttributeError("save method cant be used in DynamicCollectionDocument")
+
+    def save_sync(self, *args, **kwargs):
+        raise AttributeError(
+            "save_sync method cant be used in DynamicCollectionDocument"
+        )
+
+    @classmethod
+    def generate_collection_name(
+        cls, values: List[str], name_separator: str = "__"
+    ) -> str:
+        if not values:
+            raise ValueError("values cant be empty")
+        values_string = f"{name_separator}".join(values)
+        if cls.base_collection_name_prefix:
+            collection_name = f"{cls.base_collection_name_prefix}_{values_string}"
+        else:
+            collection_name = values_string
+        return collection_name
+
+    @classmethod
+    def get_collection_name(cls) -> str:
+        raise AttributeError("get_collection_name cant be used in DynamicCollectionDocument")
