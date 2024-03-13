@@ -8,7 +8,7 @@ from bson import decode as bson_decode, DBRef
 
 from pymongo import IndexModel
 
-from .manager import ODMManager
+from .manager import ODMManager, DynamicCollectionODMManager
 from .property import classproperty
 from .hooks import enc_hook, dec_hook
 from .errors import QueryValidationError
@@ -283,7 +283,8 @@ class Document(Struct, kw_only=True, forbid_unknown_fields=True):  # type: ignor
 
 
 class DynamicCollectionDocument(Document):
-    base_collection_name_prefix: str = ""
+    __base_collection_name_prefix__: ClassVar[str] = ""
+    __manager__: ClassVar[DynamicCollectionODMManager]
 
     @classmethod
     def _init_subclass(cls, *args, **kwargs):
@@ -315,19 +316,53 @@ class DynamicCollectionDocument(Document):
         setattr(cls, "has_relations", False)
 
     @classmethod
-    def Q(cls, collection_name: str) -> "QueryBuilder":
+    def Q(cls, collection_name: str) -> "QueryBuilder":  # type: ignore
         return cls.manager.querybuilder(collection_name)
 
     @classmethod
-    def Qsync(cls, collection_name: str) -> "SyncQueryBuilder":
+    def Qsync(cls, collection_name: str) -> "SyncQueryBuilder":  # type: ignore
         return cls.manager.sync_querybuilder(collection_name)
 
-    async def save(self, *args, **kwargs):
-        raise AttributeError("save method cant be used in DynamicCollectionDocument")
+    async def save(  # type: ignore
+        self,
+        collection_name: str,
+        updated_fields: Union[Tuple, List] = [],
+        session: Optional[AgnosticClientSession] = None,
+    ) -> "Document":
+        if self._id is not None:
+            data = {
+                "_id": (
+                    self._id if isinstance(self._id, ObjectId) else ObjectId(self._id)
+                )
+            }
+            if updated_fields:
+                if not all(field in self.__struct_fields__ for field in updated_fields):
+                    raise QueryValidationError("invalid field in updated_fields")
+            else:
+                updated_fields = self.__struct_fields__
+            for field in updated_fields:
+                data[f"{field}__set"] = getattr(self, field)
+            await self.Q(collection_name).update_one(
+                session=session,
+                **data,
+            )
+            return self
+        data = self.to_dict(with_props=False)
+        object_id = await self.Q(collection_name).insert_one(
+            session=session,
+            **data,
+        )
+        self._id = object_id
+        return self
 
-    def save_sync(self, *args, **kwargs):
-        raise AttributeError(
-            "save_sync method cant be used in DynamicCollectionDocument"
+    def save_sync(  # type: ignore
+        self,
+        collection_name: str,
+        updated_fields: Union[Tuple, List] = [],
+        session: Optional[AgnosticClientSession] = None,
+    ):
+        return self.Q(collection_name).sync._io_loop.run_until_complete(
+            self.save(collection_name, updated_fields, session)
         )
 
     @classmethod
@@ -337,12 +372,27 @@ class DynamicCollectionDocument(Document):
         if not values:
             raise ValueError("values cant be empty")
         values_string = f"{name_separator}".join(values)
-        if cls.base_collection_name_prefix:
-            collection_name = f"{cls.base_collection_name_prefix}_{values_string}"
+        if cls.__base_collection_name_prefix__:
+            collection_name = f"{cls.__base_collection_name_prefix__}_{values_string}"
         else:
             collection_name = values_string
         return collection_name
 
     @classmethod
     def get_collection_name(cls) -> str:
-        raise AttributeError("get_collection_name cant be used in DynamicCollectionDocument")
+        raise AttributeError(
+            "get_collection_name cant be used in DynamicCollectionDocument"
+        )
+
+    @classmethod
+    def init_manager(cls):
+        setattr(cls, "__manager__", DynamicCollectionODMManager(cls))  # type: ignore
+
+    @classmethod
+    def parse_obj(cls, data: dict) -> "DynamicCollectionDocument":  # type: ignore
+        obj: "DynamicCollectionDocument" = cls.from_dict(data)
+        return obj
+
+    @classmethod
+    def New(cls, **kwargs) -> "DynamicCollectionDocument":  # type: ignore
+        return cls.parse_obj(kwargs)

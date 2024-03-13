@@ -43,7 +43,7 @@ def test_schema(connection):
 async def test_application_data(connection):
     application = await Application.Q().find_one(name="test")
     data = application.data
-
+    assert data["name"] == "test"
     data = await Application.Q().find_one(config__env="test")
     assert data.name == "test"
     data = await Application.Q().find_one(config__env="invalid")
