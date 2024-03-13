@@ -3,7 +3,7 @@ from typing import ClassVar
 import pytest
 import pytest_asyncio
 
-from chouodm.document import DynamicCollectionDocument
+from chouodm.document import DynamicCollectionDocument, Document
 from msgspec import Struct
 
 
@@ -44,3 +44,21 @@ def test_schema(connection):
         application.to_json()
         == '{"name":"test","config":{"path":"/home/","env":"test"},"lang":"python","_id":null,"lang_upper":"PYTHON"}'
     )
+
+
+@pytest.mark.asyncio
+async def test_raise_with_field_mongo_document(connection):
+    with pytest.raises(ValueError):
+
+        class Default(DynamicCollectionDocument):
+            name: str
+            app: Application
+
+    with pytest.raises(ValueError):
+
+        class A(Document):
+            a: str
+
+        class NewDefault(DynamicCollectionDocument):
+            name: str
+            a: A
