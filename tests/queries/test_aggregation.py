@@ -226,75 +226,76 @@ async def test_logical_match_query_in_aggregate(connection):
     assert result[0]["title"] == "4"
     assert result[-1]["title"] == "1"
 
-    # @pytest.mark.asyncio
-    # async def test_geo(connection):
-    #     from pymongo import IndexModel
 
-    #     class Place(Document):
-    #         name: str
-    #         location: dict
-    #         category: str
+@pytest.mark.asyncio
+async def test_geo(connection):
+    from pymongo import IndexModel
 
-    #     #     class Config:
-    #     #         indexes = [IndexModel([('location', '2dsphere')])]
+    class Place(Document):
+        name: str
+        location: dict
+        category: str
 
-    #     # await Place.ensure_indexes()
+        class Config:
+            indexes = [IndexModel([("location", "2dsphere")])]
 
-    #     data = [
-    #         {
-    #             'name': "Central Park",
-    #             'location': {'type': "Point", 'coordinates': [-73.97, 40.77]},
-    #             'category': "Parks",
-    #         },
-    #         {
-    #             'name': "Sara D. Roosevelt Park",
-    #             'location': {'type': "Point", 'coordinates': [-73.9928, 40.7193]},
-    #             'category': "Parks",
-    #         },
-    #         {
-    #             'name': "Polo Grounds",
-    #             'location': {'type': "Point", 'coordinates': [-73.9375, 40.8303]},
-    #             'category': "Stadiums",
-    #         },
-    #     ]
-    #     await Place.Q().insert_many(data)
+    await Place.manager.ensure_indexes()
 
-    # geo_aggregate = (
-    #     Place.manager.aggregate()
-    #     .geo_near(
-    #         near={'type': 'Point', 'coordinates': [-73.99279, 40.719296]},
-    #         distance_field='dist.calculated',
-    #         max_distance=2,
-    #         query={'category': 'Parks'},
-    #         include_locs='dist.location',
-    #         spherical=True,
-    #     )
-    #     .project({'_id': 0})
-    # )
-    # assert geo_aggregate.pipeline == [
-    #     {
-    #         '$geoNear': {
-    #             'distanceField': 'dist.calculated',
-    #             'near': {'type': 'Point', 'coordinates': [-73.99279, 40.719296]},
-    #             'includeLocs': 'dist.location',
-    #             'maxDistance': 2,
-    #             'query': {'category': 'Parks'},
-    #             'spherical': True,
-    #         }
-    #     },
-    #     {'$project': {'_id': 0}},
-    # ]
-    # result = await geo_aggregate.result()
-    # assert result[0] == {
-    #     'name': 'Sara D. Roosevelt Park',
-    #     'location': {'type': 'Point', 'coordinates': [-73.9928, 40.7193]},
-    #     'category': 'Parks',
-    #     'dist': {
-    #         'calculated': 0.9539931676365992,
-    #         'location': {'type': 'Point', 'coordinates': [-73.9928, 40.7193]},
-    #     },
-    # }
-    # await Place.Q().drop_collection(force=True)
+    data = [
+        {
+            "name": "Central Park",
+            "location": {"type": "Point", "coordinates": [-73.97, 40.77]},
+            "category": "Parks",
+        },
+        {
+            "name": "Sara D. Roosevelt Park",
+            "location": {"type": "Point", "coordinates": [-73.9928, 40.7193]},
+            "category": "Parks",
+        },
+        {
+            "name": "Polo Grounds",
+            "location": {"type": "Point", "coordinates": [-73.9375, 40.8303]},
+            "category": "Stadiums",
+        },
+    ]
+    await Place.Q().insert_many(data)
+
+    geo_aggregate = (
+        Place.manager.aggregate()
+        .geo_near(
+            near={"type": "Point", "coordinates": [-73.99279, 40.719296]},
+            distance_field="dist.calculated",
+            max_distance=2,
+            query={"category": "Parks"},
+            include_locs="dist.location",
+            spherical=True,
+        )
+        .project({"_id": 0})
+    )
+    assert geo_aggregate.pipeline == [
+        {
+            "$geoNear": {
+                "distanceField": "dist.calculated",
+                "near": {"type": "Point", "coordinates": [-73.99279, 40.719296]},
+                "includeLocs": "dist.location",
+                "maxDistance": 2,
+                "query": {"category": "Parks"},
+                "spherical": True,
+            }
+        },
+        {"$project": {"_id": 0}},
+    ]
+    result = await geo_aggregate.result()
+    assert result[0] == {
+        "name": "Sara D. Roosevelt Park",
+        "location": {"type": "Point", "coordinates": [-73.9928, 40.7193]},
+        "category": "Parks",
+        "dist": {
+            "calculated": 0.9539931676365992,
+            "location": {"type": "Point", "coordinates": [-73.9928, 40.7193]},
+        },
+    }
+    await Place.Q().drop_collection(force=True)
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@ from motor.core import AgnosticClientSession, AgnosticCollection, AgnosticDataba
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError, NetworkTimeout
 
 
-from .query import QueryBuilder, ExtraQueryMapper
+from .query import ExtraQueryMapper
 from .query.builder import Builder
 from .errors import NotDeclaredField
 from .relation import RelationManager
@@ -87,9 +87,9 @@ class ODMManager(object):
             connection.database_name
         )
 
-    def querybuilder(self) -> QueryBuilder:
+    def querybuilder(self) -> Builder:
         builder = Builder(self, self.document.get_collection_name())
-        return QueryBuilder(builder)
+        return builder
 
     def sync_querybuilder(self) -> SyncQueryBuilder:
         builder = Builder(self, self.document.get_collection_name())
@@ -149,9 +149,9 @@ class ODMManager(object):
 
 
 class DynamicCollectionODMManager(ODMManager):
-    def querybuilder(self, collection_name: str) -> QueryBuilder:  # type: ignore
+    def querybuilder(self, collection_name: str) -> Builder:  # type: ignore
         builder = Builder(self, collection_name)
-        return QueryBuilder(builder)
+        return builder
 
     def sync_querybuilder(self, collection_name: str) -> SyncQueryBuilder:  # type: ignore
         builder = Builder(self, collection_name)

@@ -17,8 +17,8 @@ from .types import ObjectIdType
 from .relation import take_relation_info, Relation, RelationInfoTypes
 
 if TYPE_CHECKING:
-    from .query import QueryBuilder
     from .sync import SyncQueryBuilder
+    from .query.builder import Builder
 
 
 class Document(Struct, kw_only=True, forbid_unknown_fields=True):  # type: ignore
@@ -87,7 +87,7 @@ class Document(Struct, kw_only=True, forbid_unknown_fields=True):  # type: ignor
         return cls.__manager__
 
     @classmethod
-    def Q(cls) -> "QueryBuilder":
+    def Q(cls) -> "Builder":
         return cls.manager.querybuilder()
 
     @classmethod
@@ -277,7 +277,7 @@ class Document(Struct, kw_only=True, forbid_unknown_fields=True):  # type: ignor
         updated_fields: Union[Tuple, List] = [],
         session: Optional[AgnosticClientSession] = None,
     ):
-        return self.Q().sync._io_loop.run_until_complete(
+        return self.Qsync()._io_loop.run_until_complete(
             self.save(updated_fields, session)
         )
 

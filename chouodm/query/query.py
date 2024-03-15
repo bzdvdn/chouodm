@@ -9,8 +9,6 @@ from typing import (
     List,
     TYPE_CHECKING,
     Union,
-    Dict,
-    Type,
 )
 
 from bson import ObjectId
@@ -33,48 +31,6 @@ if TYPE_CHECKING:
     from ..document import Document
     from ..manager import ODMManager
     from .builder import Builder
-    from ..typing import DictStrAny
-
-
-class Query(object):
-    __slots__ = ("_builder", "method_name")
-
-    def __init__(self, builder: "Builder", method_name: str):
-        self._builder = builder
-        self.method_name = method_name
-
-    def __getattr__(self, method_name: str) -> "Query":
-        return Query(self._builder, method_name)
-
-    def __call__(self, *args, **kwargs):
-        method = getattr(self._builder, self.method_name)
-        return method(*args, **kwargs)
-
-
-class QueryBuilder(object):
-    query_class: Type[Query] = Query
-
-    __slots__ = ("builder",)
-
-    def __init__(self, builder: "Builder"):
-        self.builder = builder
-
-    def __getattr__(self, method_name: str) -> Any:
-        if method_name != "odm_manager" and hasattr(self.builder, method_name):
-            return self.query_class(self.builder, method_name)
-        raise AttributeError(f"invalid Q attr query: {method_name}")
-
-    def _validate_query_data(self, query: Dict) -> "DictStrAny":
-        return self.builder._validate_query_data(query)
-
-    def _check_query_args(self, *args, **kwargs):
-        return self.builder._check_query_args(*args, **kwargs)
-
-    def _validate_raw_query(self, *args, **kwargs):
-        return self.builder._validate_raw_query(*args, **kwargs)
-
-    def __call__(self, method_name, *args, **method_kwargs):
-        return getattr(self, method_name)(*args, **method_kwargs)
 
 
 def _validate_query_data(builder: "Builder", query: dict) -> dict:

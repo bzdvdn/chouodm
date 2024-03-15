@@ -4,6 +4,6 @@ from .extra import (
     group_by_aggregate_generation,
     bulk_query_generator,
 )
-from .query import Q, QCombination, generate_basic_query, QueryBuilder
+from .query import Q, QCombination, generate_basic_query
 
 # from .builder import QueryBuilder
